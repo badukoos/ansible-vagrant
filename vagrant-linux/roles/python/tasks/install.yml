@@ -19,7 +19,7 @@
 - name: set enable optimizations fact if Python version supports it
   set_fact:
     pri_python_configure_args: ' --enable-optimizations'
-  when: man_python_version[:3] == "2.7" or man_python_version[:3] == "3.6"
+  when: man_python_version.split('.')[:2] | join('.') == "3.11"
 
 - name: configure Python
   shell: ./configure{{pri_python_configure_args|default('')}}
@@ -37,10 +37,9 @@
     dest: /tmp/python-install/get-pip.py
 
 - name: install pip
-  command: /usr/local/bin/python{{man_python_version[:3]}} /tmp/python-install/get-pip.py
+  command: /usr/local/bin/python{{man_python_version.split('.')[:2] | join('.')}} /tmp/python-install/get-pip.py
 
 - name: cleanup install artifacts
   file:
     path: /tmp/python-install
     state: absent
-
