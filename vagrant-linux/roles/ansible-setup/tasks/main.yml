@@ -16,10 +16,8 @@
     virtualenv_python: '{{item.python}}'
     virtualenv_site_packages: yes
   with_items:
-  - name: 27
-    python: /usr/local/bin/python2.7
-  - name: 37
-    python: /usr/local/bin/python3.7
+  - name: '{{man_python_version.split(".")[:2] | join("")}}'
+    python: /usr/local/bin/python{{man_python_version.split(".")[:2] | join(".")}}
 
 - name: download ansible from source
   git:
@@ -31,10 +29,9 @@
 - name: ensure Ansible python 3 venv is set to run in bash profile
   lineinfile:
     path: ~/.bashrc
-    line: source ~/ansible-py37/bin/activate
+    line: source ~/ansible-py{{man_python_version.split(".")[:2] | join("")}}/bin/activate
 
 - name: ensure Ansible is activated in bash profile
   lineinfile:
     path: ~/.bashrc
     line: source ~/ansible/hacking/env-setup -q
-
