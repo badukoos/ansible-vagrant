@@ -1,3 +1,5 @@
+> ⚠️ **Work in Progress. This fork is not ready for consumption, yet**.
+
 # Ansible and Windows
 This repo contains some scripts and other stuff that can be useful when using
 Ansible with Windows hosts.
