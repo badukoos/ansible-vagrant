@@ -1,3 +1,6 @@
+
+> ⚠️ **Work in Progress. This fork is not ready for consumption, yet**.
+
 # Vagrant Linux
 
 This folder contains a Vagrantfile that can create multiple Linux VMs and
@@ -40,4 +43,3 @@ I have been toying adding the host to the actual domain and configure samba but
 this is not necessary to use Kerberos auth with Ansible and further complicates
 the install. I may look into adding this in the future as a configuration
 option.
-
