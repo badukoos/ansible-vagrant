@@ -1,0 +1,10 @@
+---
+temp_dir: C:\Temp
+
+virtio_gt_local: "{{ temp_dir }}\\virtio-win-gt-x64.msi"
+virtio_log_path: "{{ temp_dir }}\\virtio-gt-install.log"
+virtio_task_name: InstallVirtioGT
+virtio_gt_url: https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.266-1/virtio-win-gt-x64.msi
+
+spice_url: https://www.spice-space.org/download/windows/spice-guest-tools/spice-guest-tools-latest.exe
+winfsp_url: https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi
