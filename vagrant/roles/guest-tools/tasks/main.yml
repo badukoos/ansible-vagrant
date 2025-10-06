@@ -1,7 +1,7 @@
 ---
 - name: Ensure spice-guest-tools is installed
   ansible.windows.win_package:
-    path: https://www.spice-space.org/download/windows/spice-guest-tools/spice-guest-tools-latest.exe
+    path: "{{ spice_url }}"
     state: present
     product_id: SpiceGuestTools
     arguments:
@@ -10,7 +10,7 @@
 
 - name: Ensure winfsp is installed
   ansible.windows.win_package:
-    path: "{{ winsp_url }}"
+    path: "{{ winfsp_url }}"
     provider: msi
     state: present
 
