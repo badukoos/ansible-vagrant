@@ -3,6 +3,11 @@
   hosts: linux
   become: yes
   gather_facts: no
+  module_defaults:
+    apt:
+      update_cache: true
+      cache_valid_time: 3600
+
   pre_tasks:
   - name: wait for connection to come online
     wait_for_connection:

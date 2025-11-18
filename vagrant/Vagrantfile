@@ -1,60 +1,412 @@
 # -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-# Require YAML module
 require 'yaml'
- 
-# Read YAML file with box details
-inventory = YAML.load_file('inventory.yml')
+require 'shellwords'
 
-domain_children_count = inventory['all']['children']['domain_children']['hosts'].keys.count
-current_host = 1
+ROOT           = File.expand_path(File.dirname(__FILE__))
+INV_PATH       = File.join(ROOT, 'inventory.yml')
+LINUX_PLAYBOOK = File.join(ROOT, 'linux.yml')
+WIN_PLAYBOOK   = File.join(ROOT, 'windows.yml')
 
-Vagrant.configure("2") do |config|
-  config.vm.define "dc" do |dc|
-    inventory['all']['children']['controller']['hosts'].each do |server,details|
-      dc.vm.box = details['vagrant_box']
-      dc.vm.hostname = server
-      dc.vm.network :private_network, ip: details['ansible_host']
-      inventory['all']['vars']['vagrant_ports'].each do |protocol,details|
-        dc.vm.network :forwarded_port, guest: details['guest'], host: details['host'], id: protocol
-      end
+def print_help
+  puts <<~HELP
 
-      dc.vm.provider :virtualbox do |v|
-        v.name = File.basename(File.dirname(__FILE__)) + "_" + server + "_" + Time.now.to_i.to_s
-        v.gui = false
-        v.memory = 2048
-        v.cpus = 2
+    All standard vagrant commands work as usual
+
+    This Vagrantfile is inventory driven
+      - Hostnames, IP addresses, boxes, and VM params come from ./inventory.yml
+
+    Usage:
+      VAGRANT_GROUP=<group|group/subgroup|host1,host2> vagrant up [args]
+
+    Ansible Provisioner:
+      ANSIBLE_EXTRA_ARGS="--tags foo -vvv" vagrant up linux
+
+  HELP
+end
+
+if ARGV.include?("--custom-help")
+  print_help
+  exit
+end
+
+def env_str(key, default=nil); v = ENV[key]; return default if v.nil? || v.strip.empty?; v end
+
+def last_octet(ip)
+  m = ip.to_s.strip.match(/(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+  m ? m[4].to_i : nil
+end
+
+def load_inventory(path)
+  raise "Missing inventory #{path}" unless File.exist?(path)
+  YAML.load_file(path)
+end
+
+def flatten_hosts(inv)
+  hosts = {}
+  walker = lambda do |node, groups, acc_vars|
+    return unless node.is_a?(Hash)
+    cur_vars = acc_vars.dup
+    cur_vars.merge!(node['vars'] || {})
+    if node['hosts'].is_a?(Hash)
+      node['hosts'].each do |hn, hv|
+        hosts[hn] ||= { 'vars' => {}, 'groups' => [] }
+        hosts[hn]['vars'].merge!(cur_vars)
+        # merge host-specific vars, overrides group vars with the same name
+        hosts[hn]['vars'].merge!(hv || {})
+        hosts[hn]['groups'] |= groups
       end
     end
+    if node['children'].is_a?(Hash)
+      node['children'].each { |g, sub| walker.call(sub, groups + [g], cur_vars) }
+    end
   end
+  root = inv['all'].is_a?(Hash) ? inv['all'] : inv
+  walker.call(root, [], {})
+  hosts
+end
 
-  inventory['all']['children']['domain_children']['hosts'].each do |server,details|
-    config.vm.define server do |srv|
-      srv.vm.box = details['vagrant_box']
-      srv.vm.hostname = server
-      srv.vm.network :private_network, ip: details['ansible_host']
-      inventory['all']['vars']['vagrant_ports'].each do |protocol, details|
-        srv.vm.network :forwarded_port, guest: details['guest'], host: details['host'] + current_host, id: protocol
-      end
+def in_group?(meta, group)
+  (meta['groups'] || []).map { |g| g.to_s.downcase }.include?(group.to_s.downcase)
+end
 
-      srv.vm.provider :virtualbox do |v|
-        v.name = File.basename(File.dirname(__FILE__)) + "_" + server + "_" + Time.now.to_i.to_s
-        v.gui = false
-        v.memory = 2048
-        v.cpus = 2
-      end
+def fetch_array(v, key)
+  a = v[key]
+  a.is_a?(Array) ? a : []
+end
 
-      if current_host == domain_children_count then
-        config.vm.provision "ansible" do |ansible|
-          ansible.playbook = "main.yml"
-          ansible.limit = "all"
-          ansible.inventory_path = "inventory.yml"
-          ansible.verbose = "-vv"
-        end
-      end
-      current_host = current_host + 1
+def symbolize_keys_shallow(h)
+  return {} unless h.is_a?(Hash)
+  out = {}
+  h.each { |k, v| out[(k.is_a?(Symbol) ? k : k.to_s.to_sym)] = v }
+  out
+end
+
+def coerce_val(v)
+  if v.is_a?(String) && v.start_with?(':')
+    v[1..-1].to_sym
+  elsif v.is_a?(Array)
+    v.map { |x| coerce_val(x) }
+  elsif v.is_a?(Hash)
+    v.transform_values { |x| coerce_val(x) }
+  else
+    v
+  end
+end
+
+def apply_synced_folders(vm, folders, default_id_base: 'sync')
+  folders.each_with_index do |f, i|
+    next unless f.is_a?(Hash)
+    src = f['src'] || f[:src] || '.'
+    dst = f['dst'] || f[:dst] || '/vagrant-extra'
+    opts = f.dup
+    opts.delete('src'); opts.delete(:src)
+    opts.delete('dst'); opts.delete(:dst)
+    id = opts.delete('id') || opts.delete(:id) || "#{default_id_base}-#{i}"
+    vm.vm.synced_folder src, dst, { id: id }.merge(symbolize_keys_shallow(opts))
+  end
+end
+
+def apply_extra_disks(vm, disks)
+  disks.each do |d|
+    next unless d.is_a?(Hash)
+    name = d['name'] || d[:name]
+    size = (d['size'] || d[:size]).to_s
+    next if size.strip.empty?
+    args = { size: size }
+    args[:name] = "vagrant-#{name}" if name && !name.to_s.strip.empty?
+    bus = d['bus'] || d[:bus]
+    args[:bus] = bus if bus
+    vm.vm.disk :disk, **args
+  end
+end
+
+def apply_extra_networks(vm, nets)
+  nets.each do |n|
+    next unless n.is_a?(Hash)
+    type = (n['type'] || n[:type] || 'private_network').to_sym
+    opts = symbolize_keys_shallow(n)
+    opts.delete(:type)
+    if type == :forwarded_port
+      vm.vm.network 'forwarded_port', **opts
+    else
+      vm.vm.network type, **opts
     end
   end
 end
 
+def apply_libvirt_options(lv, opts)
+  return unless opts.is_a?(Hash)
+  %w[cpus memory cpu_mode cpu_model cpu_fallback machine_type nic_model_type
+     video_type video_vram kvm_hidden autostart].each do |k|
+    v = opts[k] || opts[k.to_sym]
+    next if v.nil?
+    begin
+      lv.public_send("#{k}=", v)
+    rescue NoMethodError
+    end
+  end
+
+  topo = opts['cpu_topology'] || opts[:cpu_topology]
+  if topo.is_a?(Hash)
+    lv.cpu_topology sockets: topo['sockets'] || topo[:sockets],
+                    cores:   topo['cores']   || topo[:cores],
+                    threads: topo['threads'] || topo[:threads]
+  end
+
+  mb = opts['memorybacking'] || opts[:memorybacking]
+  if mb.is_a?(Hash)
+    access = mb['access'] || mb[:access]
+    if access.is_a?(Hash)
+      mode = access['mode'] || access[:mode]
+      lv.memorybacking :access, mode: mode if mode
+    end
+  end
+
+  qa = opts['qemu_args'] || opts[:qemu_args]
+  if qa.is_a?(Array)
+    qa.each do |arr|
+      next unless arr.is_a?(Array)
+      arr.each { |val| lv.qemuargs :value => val }
+    end
+  end
+end
+
+VM_ALLOWED = %w[
+  network synced_folder provision trigger disk
+].freeze
+
+LIBVIRT_ALLOWED = %w[
+  set cpu_topology memorybacking qemuargs
+  serial parallel console channel
+  usb usb_controller redirdev
+  host_device pci mdev
+  graphics video sound input
+  controller filesystem
+  watchdog smartcard
+  tpm rng panic vsock
+].freeze
+
+def apply_vm_calls(vm, calls)
+  return unless calls.is_a?(Array)
+  calls.each do |c|
+    next unless c.is_a?(Hash)
+    m = (c['method'] || c[:method]).to_s
+    next unless VM_ALLOWED.include?(m)
+    args   = coerce_val(c['args']   || c[:args]   || [])
+    kwargs = symbolize_keys_shallow(coerce_val(c['kwargs'] || c[:kwargs] || {}))
+
+    case m
+    when 'network'
+      if args.first == 'forwarded_port'
+        vm.vm.network 'forwarded_port', **kwargs
+      else
+        vm.vm.network(*(args), **kwargs)
+      end
+    when 'synced_folder'
+      src, dst, *rest = args
+      vm.vm.synced_folder(src || '.', dst || '/vagrant-extra', **kwargs)
+    when 'disk'
+      vm.vm.disk(*(args), **kwargs)
+    when 'provision'
+      vm.vm.provision(*(args), **kwargs)
+    when 'trigger'
+      # Example: {method:"trigger", args:[":after", ":destroy"], kwargs:{info:"msg", run:{inline:"echo hi"}}}
+      phase, hook = args
+      if %i[before after].include?(phase) && hook
+        vm.trigger.public_send(phase, hook) do |t|
+          info = kwargs[:info]; t.info = info if info
+          run  = kwargs[:run];  t.run  = run  if run
+        end
+      end
+    end
+  end
+end
+
+def apply_libvirt_calls(lv, calls)
+  return unless calls.is_a?(Array)
+  calls.each do |c|
+    next unless c.is_a?(Hash)
+    m = (c['method'] || c[:method]).to_s
+    next unless LIBVIRT_ALLOWED.include?(m)
+    args   = coerce_val(c['args']   || c[:args]   || [])
+    kwargs = symbolize_keys_shallow(coerce_val(c['kwargs'] || c[:kwargs] || {}))
+
+    case m
+    when 'set'
+      kwargs.each do |k, v|
+        begin lv.public_send("#{k}=", v) rescue NoMethodError; end
+      end
+    when 'cpu_topology'  then lv.cpu_topology(**kwargs)
+    when 'memorybacking' then lv.memorybacking(*args, **kwargs)
+    when 'qemuargs'      then Array(args).each { |val| lv.qemuargs value: val }
+    when 'serial'        then lv.serial(**kwargs)
+    when 'parallel'      then lv.parallel(**kwargs)
+    when 'console'       then lv.console(**kwargs)
+    when 'channel'       then lv.channel(**kwargs)
+    when 'usb'           then lv.usb(**kwargs)
+    when 'usb_controller'then lv.usb_controller(**kwargs)
+    when 'redirdev'      then lv.redirdev(**kwargs)
+    when 'filesystem'    then lv.filesystem(**kwargs)
+    when 'watchdog'      then lv.watchdog(**kwargs)
+    when 'smartcard'     then lv.smartcard(**kwargs)
+    when 'tpm'           then lv.tpm(**kwargs)
+    when 'rng'           then lv.rng(**kwargs)
+    when 'panic'         then lv.panic(**kwargs)
+    when 'vsock'         then lv.vsock(**kwargs)
+    when 'graphics'      then lv.graphics(**kwargs)
+    when 'video'         then lv.video(**kwargs)
+    when 'sound'         then lv.sound(**kwargs)
+    when 'input'         then lv.input(**kwargs)
+    when 'controller'    then lv.controller(**kwargs)
+    when 'host_device'   then lv.host_device(**kwargs)
+    when 'pci'           then lv.pci(**kwargs)
+    when 'mdev'          then lv.mdev(**kwargs)
+    else
+      begin
+        lv.public_send(m, *args, **kwargs)
+      rescue NoMethodError
+      end
+    end
+  end
+end
+
+# main
+inv = load_inventory(INV_PATH)
+warn "[vagrantfile] inventory top-level keys: #{inv.keys.map(&:to_s).join(', ')}"
+
+HOSTS  = flatten_hosts(inv)
+raise "No hosts found in #{INV_PATH}" if HOSTS.empty?
+
+KNOWN_GROUPS =
+  HOSTS.values
+       .flat_map { |m| (m['groups'] || []) }
+       .map { |g| g.to_s.downcase }
+       .uniq
+       .sort
+
+group_env = env_str('VAGRANT_GROUP', nil)
+selectors = (group_env || '').split(/[,\s]+/).map(&:strip).reject(&:empty?)
+
+def matches_selector?(name, meta, selector)
+  host_groups = (meta['groups'] || []).map(&:downcase)
+  sel = selector.to_s.downcase.strip
+  return false if sel.empty?
+
+  if sel.include?('/') || sel.include?('+')
+    tokens = sel.split(/[\/+]/).map(&:strip).reject(&:empty?)
+    return true if tokens.include?(name.downcase)
+    (tokens - host_groups).empty?
+  else
+    sel == name.downcase || host_groups.include?(sel)
+  end
+end
+
+TARGETS = if selectors.empty?
+  HOSTS
+else
+  HOSTS.select do |name, meta|
+    selectors.any? { |sel| matches_selector?(name, meta, sel) }
+  end
+end
+
+if TARGETS.empty?
+  known_hosts  = HOSTS.keys.sort.join(', ')
+  known_groups = KNOWN_GROUPS.join(', ')
+  abort "No hosts match VAGRANT_GROUP='#{group_env}'.\nKnown hosts: #{known_hosts}\nKnown groups: #{known_groups}"
+end
+
+NAMES  = TARGETS.keys.sort
+warn "[vagrantfile] defining machines: #{NAMES.join(', ')}"
+
+PORT_BASES = {
+  rdp:         { guest: 3389, host: 29500 },
+  ssh:         { guest:   22, host: 29600 },
+  winrm_http:  { guest: 5985, host: 29700 },
+  winrm_https: { guest: 5986, host: 29800 },
+  smb:         { guest:  445, host: 29900 },
+}
+
+Vagrant.configure('2') do |config|
+  config.vm.synced_folder '.', '/vagrant', disabled: true, id: 'vagrant-root'
+
+  TARGETS.each do |name, meta|
+    v  = meta['vars'] || {}
+    ip = v['ansible_host'] or raise "Host #{name} missing ansible_host"
+    os = (v['os'] || 'linux').to_s.downcase
+
+    cpus      = (v['cpus'] || 2).to_i
+    mem       = (v['mem']  || 4096).to_i
+    nic_model = (v['nic_model_type'] || "virtio").to_s
+    disk_size = v['disk']
+
+    config.vm.define name do |vm|
+      vm.vm.box      = v['vagrant_box'] or raise "Host #{name} missing vagrant_box"
+      vm.vm.hostname = name
+
+      if os == 'windows'
+        vm.vm.communicator = 'winrm'
+        vm.winrm.username  = (v['winrm_user'] || 'vagrant').to_s
+        vm.winrm.password  = (v['winrm_pass'] || 'vagrant').to_s
+      else
+        vm.vm.communicator = 'ssh'
+        vm.ssh.username    = 'vagrant'
+      end
+
+      vm.vm.network :private_network, ip: ip, libvirt__model_type: nic_model
+
+      if os == 'linux'
+        sync_type = (v['sync_type'] || 'virtiofs').to_s
+        vm.vm.synced_folder '.', '/vagrant', type: sync_type, id: 'vagrant-root'
+      else
+        vm.vm.synced_folder '.', '/vagrant', disabled: true, id: 'vagrant-root'
+      end
+
+      apply_synced_folders(vm, fetch_array(v, 'synced_folders'))
+      apply_extra_disks(vm,    fetch_array(v, 'extra_disks'))
+      apply_extra_networks(vm, fetch_array(v, 'extra_networks'))
+
+      vm.vm.provider :libvirt do |lv|
+        lv.cpus           = cpus
+        lv.memory         = mem
+        lv.nic_model_type = nic_model
+        lv.memorybacking :access, :mode => 'shared'
+
+        apply_libvirt_options(lv, v['libvirt_options'])
+        apply_libvirt_calls(lv, v['libvirt_calls'])
+      end
+
+      if disk_size && !disk_size.to_s.strip.empty?
+        vm.vm.disk :disk, name: "vagrant-#{name}", size: disk_size.to_s
+      end
+
+      yy = last_octet(ip)
+      PORT_BASES.each do |port_name, spec|
+        next unless yy
+        vm.vm.network 'forwarded_port',
+          guest: spec[:guest],
+          host: spec[:host] + yy,
+          auto_correct: true,
+          id: port_name.to_s
+      end
+
+      apply_vm_calls(vm, v['vm_calls'])
+
+      vm.vm.provision 'ansible' do |ans|
+        ans.playbook          = (os == 'windows') ? WIN_PLAYBOOK : LINUX_PLAYBOOK
+        ans.inventory_path    = INV_PATH
+        ans.limit             = name
+        ans.host_key_checking = false
+        extra = env_str('ANSIBLE_EXTRA_ARGS', nil)
+        ans.verbose = :vv unless extra && extra.match(/(^|\s)-v{1,5}\b/)
+        ans.raw_arguments = Shellwords.split(extra) if extra
+      end
+
+      if in_group?(meta, 'controller')
+        vm.trigger.after :destroy do |t|
+          t.info = "Cleaning up DC readiness marker"
+          t.run  = { inline: "rm -f \"#{ROOT}/.vagrant/markers/dc_ready\" || true" }
+        end
+      end
+    end
+  end
+end
