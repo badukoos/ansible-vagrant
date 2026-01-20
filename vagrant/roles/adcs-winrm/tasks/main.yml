@@ -4,13 +4,14 @@
     that:
     - man_adcs_winrm_is_dc is defined
     - man_adcs_winrm_domain is defined
+    - man_domain_join_domain_name is defined
 
 - name: refresh the local GPO to ensure we have the latest certs
   win_command: gpupdate /force
 
 - name: set certificate issuer name
   set_fact:
-    pri_adcs_winrm_issuer: CN=domain-{{groups['controller'][0]}}-CA, DC={{man_adcs_winrm_domain.split(".")|join(", DC=")}}
+    pri_adcs_winrm_issuer: CN={{ man_domain_join_domain_name.split('.')[0] }}-{{groups['controller'][0]}}-CA, DC={{man_adcs_winrm_domain.split(".")|join(", DC=")}}
 
 # the logic to get the cert thumbprint differs from the DCs and other hosts
 - name: get certificate thumbprint to use for new WSMan listener on the domain controller
