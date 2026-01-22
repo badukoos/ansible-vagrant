@@ -1,37 +1,37 @@
 ---
 - name: create virtualenv for Ansible
-  pip:
+  ansible.builtin.pip:
     name:
-    - ansible
-    - pywinrm
-    - requests-kerberos
-    - pypsrp
-    - requests-credssp
-    - gssapi
-    #- pywinrm[kerberos,credssp]
-    #- pypsrp[kerberos,credssp]
+      - ansible
+      - pywinrm
+      - requests-kerberos
+      - pypsrp
+      - requests-credssp
+      - gssapi
+    # - pywinrm[kerberos,credssp]
+    # - pypsrp[kerberos,credssp]
     state: latest
     virtualenv: ~/ansible-py{{item.name}}
     virtualenv_command: /usr/local/bin/virtualenv
     virtualenv_python: '{{item.python}}'
-    virtualenv_site_packages: yes
+    virtualenv_site_packages: true
   with_items:
-  - name: '{{man_python_version.split(".")[:2] | join("")}}'
-    python: /usr/local/bin/python{{man_python_version.split(".")[:2] | join(".")}}
+    - name: '{{man_python_version.split(".")[:2] | join("")}}'
+      python: /usr/local/bin/python{{man_python_version.split(".")[:2] | join(".")}}
 
 - name: download ansible from source
-  git:
+  ansible.builtin.git:
     repo: https://github.com/ansible/ansible.git
     dest: ~/ansible
     version: devel
-    accept_hostkey: yes
+    accept_hostkey: true
 
 - name: ensure Ansible python 3 venv is set to run in bash profile
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: ~/.bashrc
     line: source ~/ansible-py{{man_python_version.split(".")[:2] | join("")}}/bin/activate
 
 - name: ensure Ansible is activated in bash profile
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: ~/.bashrc
     line: source ~/ansible/hacking/env-setup -q

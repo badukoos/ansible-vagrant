@@ -4,7 +4,7 @@
   gather_facts: false
   vars:
     __marker_dir: "{{ playbook_dir }}/.vagrant/markers"
-    __dc_marker:  "{{ __marker_dir }}/dc_ready"
+    __dc_marker: "{{ __marker_dir }}/dc_ready"
 
   pre_tasks:
     - name: make absolutely sure the connection is active
@@ -40,7 +40,7 @@
       delegate_to: localhost
       run_once: true
       changed_when: false
-      copy:
+      ansible.builtin.copy:
         content: "{{ out_adcs_enrollment_chain_thumbprint }}"
         dest: "{{ playbook_dir }}/ca_chain.pem"
         mode: "0644"
@@ -49,7 +49,7 @@
       delegate_to: localhost
       run_once: true
       changed_when: false
-      file:
+      ansible.builtin.file:
         path: "{{ __marker_dir }}"
         state: directory
         mode: "0755"
@@ -58,7 +58,7 @@
       delegate_to: localhost
       run_once: true
       changed_when: false
-      copy:
+      ansible.builtin.copy:
         dest: "{{ __dc_marker }}"
         content: "***ok***\n"
         mode: "0644"
@@ -68,8 +68,8 @@
   gather_facts: false
   vars:
     __marker_dir: "{{ playbook_dir }}/.vagrant/markers"
-    __dc_marker:  "{{ __marker_dir }}/dc_ready"
-    __dc_ip:      "{{ hostvars[groups.controller[0]].ansible_host }}"
+    __dc_marker: "{{ __marker_dir }}/dc_ready"
+    __dc_ip: "{{ hostvars[groups.controller[0]].ansible_host }}"
 
   pre_tasks:
     - name: wait for controller readiness marker
