@@ -4,21 +4,7 @@
     that:
       - man_python_version is defined
 
-- name: make sure RHEL/Centos packages required for Python compiling are installed
-  yum:
-    name:
-      - gcc
-      - zlib-devel
-      - openssl-devel
-      - sqlite-devel
-      - bzip2-devel
-      - readline-devel
-      - libffi-devel
-      - libselinux-python
-    state: present
-  when: ansible_package_name == 'yum'
-
-- name: make sure Fedora packages required for Python compiling are installed
+- name: make sure RHEL/Centos/Fedora packages required for Python compiling are installed
   ansible.builtin.dnf:
     name:
       - gcc

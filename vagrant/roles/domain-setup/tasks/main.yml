@@ -14,7 +14,7 @@
     ipv4_addresses: 127.0.0.1
 
 - name: ensure domain exists and DC is promoted as a domain controller
-  ansible.windows.win_domain:
+  microsoft.ad.domain:
     dns_domain_name: '{{man_domain_setup_domain_name}}'
     safe_mode_password: '{{man_domain_setup_safe_mode_password}}'
   register: pri_domain_setup_install_result
@@ -24,14 +24,15 @@
   when: pri_domain_setup_install_result.reboot_required
 
 - name: create domain username
-  community.windows.win_domain_user:
+  microsoft.ad.user:
     name: '{{man_domain_setup_username}}'
     upn: '{{man_domain_setup_username}}@{{man_domain_setup_domain_name}}'
     description: '{{man_domain_setup_username}} Domain Account'
     password: '{{man_domain_setup_password}}'
     password_never_expires: yes
     groups:
-      - Domain Admins
+      set:
+        - 'Domain Admins'
     state: present
   register: pri_domain_setup_create_user_result
   # after reboot, the netlogon service isn't available immediately, we need

@@ -20,7 +20,7 @@
     - opt_domain_join_is_longhorn == True
 
 - name: join host to domain
-  ansible.windows.win_domain_membership:
+  microsoft.ad.membership:
     dns_domain_name: '{{man_domain_join_domain_name}}'
     domain_admin_user: '{{man_domain_join_username}}'
     domain_admin_password: '{{man_domain_join_password}}'

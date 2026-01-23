@@ -6,16 +6,7 @@
       - man_kerberos_kdc_hostname is defined
       - man_kerberos_kdc_ip is defined
 
-- name: ensure kerberos packages are installed for RHEL/Centos
-  yum:
-    name:
-      - krb5-devel
-      - krb5-workstation
-      - dnsmasq
-    state: present
-  when: ansible_package_name == 'yum'
-
-- name: ensure kerberos packages are installed for Fedora
+- name: ensure kerberos packages are installed for RHEL/Centos/Fedora
   ansible.builtin.dnf:
     name:
       - krb5-devel
@@ -66,7 +57,7 @@
         state: restarted
       when: dhclient_conf is changed
 
-  when: ansible_package_name == 'dnf' or ansible_package_name == 'yum'
+  when: ansible_package_name == 'dnf'
 
 - name: restart dnsmasq after config setup
   ansible.builtin.service:

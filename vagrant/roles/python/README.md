@@ -8,7 +8,7 @@ Install Python using `make altinstall` to `/usr/local/bin/python*`.
 
 ### Mandatory Variables
 
-* `ansible_package_name`: The name of the package manager for the distro, supports `yum`, `dnf`, and `dnf`.
+* `ansible_package_name`: The name of the package manager for the distro, supports `dnf`, and `dnf`.
 * `man_python_version`: The Python version to install, should be the x.y.z version string.
 
 ## Examples
@@ -29,4 +29,3 @@ Install Python using `make altinstall` to `/usr/local/bin/python*`.
   role:
   - python
 ```
-

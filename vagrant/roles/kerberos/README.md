@@ -9,7 +9,7 @@ Kerberos itself to be able to look at domain/realm.
 
 ### Mandatory Variables
 
-* `ansible_package_name`: The name of the package manager for the distro, supports `yum`, `dnf`, and `apt`.
+* `ansible_package_name`: The name of the package manager for the distro, supports `dnf`, and `apt`.
 * `man_kerberos_realm`: The realm/domain of to configure, this should be in lowercase.
 * `man_kerberos_kdc_hostname`: The hostname (not FQDN) of the KDC or domain controller.
 * `man_kerberos_kdc_ip`: The IP address of the KDC or domain controller.
