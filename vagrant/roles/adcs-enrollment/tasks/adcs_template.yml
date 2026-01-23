@@ -17,7 +17,7 @@
   changed_when: pri_adcs_enrollment_config.rc == 0
   failed_when:
     - pri_adcs_enrollment_config.rc != 0
-    - '"The Certification Authority is already installed" not in (pri_adcs_enrollment_config.stderr|regex_replace("\r\n", ""))'
+    - '"The Certification Authority is already installed" not in (pri_adcs_enrollment_config.stderr | regex_replace("\r\n", ""))'
   become: true
   become_user: SYSTEM
   become_method: runas
@@ -28,7 +28,7 @@
 # template
 - name: import the certificate template into AD CS
   win_adcs_template:
-    templates: '{{lookup("template", "adcs_template.xml.j2")}}'
+    templates: '{{ lookup("template", "adcs_template.xml.j2") }}'
     dacl:
       - user: Authenticated Users
         rights:
@@ -103,10 +103,10 @@
     group: Enterprise Admins
 
 - name: check if the template has already been set in CA
-  ansible.windows.win_shell: if (Get-CATemplate | Where-Object { $_.Name -eq "{{pri_adcs_enrollment_template_name}}" }) { $true } else { $false }
+  ansible.windows.win_shell: if (Get-CATemplate | Where-Object { $_.Name -eq "{{ pri_adcs_enrollment_template_name }}" }) { $true } else { $false }
   register: pri_adcs_enrollment_template_in_ca
   changed_when: false
 
 - name: add imported certificate template to AD CS
-  ansible.windows.win_shell: Add-CATemplate -Name {{pri_adcs_enrollment_template_name|quote}} -Force
-  when: not pri_adcs_enrollment_template_in_ca.stdout_lines[0]|bool
+  ansible.windows.win_shell: Add-CATemplate -Name {{ pri_adcs_enrollment_template_name | quote }} -Force
+  when: not pri_adcs_enrollment_template_in_ca.stdout_lines[0] | bool

@@ -10,20 +10,20 @@
 
 - name: set the DNS for the private adapter to point to the DC
   ansible.windows.win_dns_client:
-    adapter_names: '{{man_domain_join_network_name}}'
-    ipv4_addresses: '{{man_domain_join_dc_ip}}'
+    adapter_names: '{{ man_domain_join_network_name }}'
+    ipv4_addresses: '{{ man_domain_join_dc_ip }}'
 
 - name: set the adapter priority to 1 for Server 2008 hosts
-  ansible.windows.win_command: netsh interface ip set interface interface="{{man_domain_join_network_name}}" metric=1
+  ansible.windows.win_command: netsh interface ip set interface interface="{{ man_domain_join_network_name }}" metric=1
   when:
     - opt_domain_join_is_longhorn is defined
     - opt_domain_join_is_longhorn == True
 
 - name: join host to domain
   microsoft.ad.membership:
-    dns_domain_name: '{{man_domain_join_domain_name}}'
-    domain_admin_user: '{{man_domain_join_username}}'
-    domain_admin_password: '{{man_domain_join_password}}'
+    dns_domain_name: '{{ man_domain_join_domain_name }}'
+    domain_admin_user: '{{ man_domain_join_username }}'
+    domain_admin_password: '{{ man_domain_join_password }}'
     state: domain
   register: pri_domain_join_result
 
@@ -36,5 +36,5 @@
   become: true
   become_method: runas
   vars:
-    ansible_become_user: '{{man_domain_join_username}}'
-    ansible_become_password: '{{man_domain_join_password}}'
+    ansible_become_user: '{{ man_domain_join_username }}'
+    ansible_become_password: '{{ man_domain_join_password }}'

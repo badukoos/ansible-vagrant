@@ -18,4 +18,4 @@
 
 - name: set PEM encoded cert as fact with correct headers
   ansible.builtin.set_fact:
-    out_adcs_enrollment_chain_thumbprint: "-----BEGIN CERTIFICATE-----\n{{pri_adcs_enrollment_chain_thumbprint_raw.stdout_lines|join('\n')}}\n-----END CERTIFICATE-----"
+    out_adcs_enrollment_chain_thumbprint: "-----BEGIN CERTIFICATE-----\n{{ pri_adcs_enrollment_chain_thumbprint_raw.stdout_lines | join('\n') }}\n-----END CERTIFICATE-----"

@@ -28,13 +28,13 @@
 - name: setup host entry for KDC
   ansible.builtin.lineinfile:
     path: /etc/hosts
-    line: '{{man_kerberos_kdc_ip}}  {{man_kerberos_kdc_hostname}}.{{man_kerberos_realm}} {{man_kerberos_kdc_hostname}}'
+    line: '{{ man_kerberos_kdc_ip }}  {{ man_kerberos_kdc_hostname }}.{{ man_kerberos_realm }} {{ man_kerberos_kdc_hostname }}'
 
 - name: setup dnsmasq config
   ansible.builtin.copy:
     dest: /etc/dnsmasq.conf
     content: |
-      server=/{{man_kerberos_realm}}/{{man_kerberos_kdc_ip}}
+      server=/{{ man_kerberos_realm }}/{{ man_kerberos_kdc_ip }}
       server=8.8.8.8
       server=8.8.4.4
       server=208.67.220.220

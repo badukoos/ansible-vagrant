@@ -9,23 +9,23 @@
 
 - name: create admin group
   ansible.builtin.group:
-    name: '{{man_user_setup_group}}'
+    name: '{{ man_user_setup_group }}'
     state: present
 
 - name: create user
   ansible.builtin.user:
-    name: '{{man_user_setup_user}}'
-    password: '{{man_user_setup_enc_pass}}'
+    name: '{{ man_user_setup_user }}'
+    password: '{{ man_user_setup_enc_pass }}'
     state: present
-    group: '{{man_user_setup_group}}'
+    group: '{{ man_user_setup_group }}'
 
 - name: add ssh public key to user
   ansible.posix.authorized_key:
-    user: '{{man_user_setup_user}}'
-    key: '{{man_user_setup_ssh_key}}'
+    user: '{{ man_user_setup_user }}'
+    key: '{{ man_user_setup_ssh_key }}'
 
 - name: add admin group to sudoers
   ansible.builtin.lineinfile:
     path: /etc/sudoers
-    regexp: '^%{{man_user_setup_group}}'
-    line: '%{{man_user_setup_group}} ALL=(ALL) NOPASSWD:ALL'
+    regexp: '^%{{ man_user_setup_group }}'
+    line: '%{{ man_user_setup_group }} ALL=(ALL) NOPASSWD:ALL'

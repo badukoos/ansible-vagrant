@@ -34,12 +34,12 @@
     - role: kerberos
     - role: python
       vars:
-        man_python_version: '{{python3_version}}'
+        man_python_version: '{{ python3_version }}'
 
 - name: setup pip and Ansible for the ansible user
   hosts: all
   become: true
-  become_user: '{{man_user_setup_user}}'
+  become_user: '{{ man_user_setup_user }}'
   gather_facts: false
   roles:
     - ansible-setup

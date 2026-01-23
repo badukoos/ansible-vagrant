@@ -11,13 +11,13 @@
     # - pywinrm[kerberos,credssp]
     # - pypsrp[kerberos,credssp]
     state: latest
-    virtualenv: ~/ansible-py{{item.name}}
+    virtualenv: ~/ansible-py{{ item.name }}
     virtualenv_command: /usr/local/bin/virtualenv
-    virtualenv_python: '{{item.python}}'
+    virtualenv_python: '{{ item.python }}'
     virtualenv_site_packages: true
   with_items:
-    - name: '{{man_python_version.split(".")[:2] | join("")}}'
-      python: /usr/local/bin/python{{man_python_version.split(".")[:2] | join(".")}}
+    - name: '{{ man_python_version.split(".")[:2] | join("") }}'
+      python: /usr/local/bin/python{{ man_python_version.split(".")[:2] | join(".") }}
 
 - name: download ansible from source
   ansible.builtin.git:
@@ -29,7 +29,7 @@
 - name: ensure Ansible python 3 venv is set to run in bash profile
   ansible.builtin.lineinfile:
     path: ~/.bashrc
-    line: source ~/ansible-py{{man_python_version.split(".")[:2] | join("")}}/bin/activate
+    line: source ~/ansible-py{{ man_python_version.split(".")[:2] | join("") }}/bin/activate
 
 - name: ensure Ansible is activated in bash profile
   ansible.builtin.lineinfile:

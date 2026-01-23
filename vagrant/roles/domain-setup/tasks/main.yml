@@ -10,13 +10,13 @@
 
 - name: set the DNS for the specified adapter to localhost
   ansible.windows.win_dns_client:
-    adapter_name: '{{man_domain_setup_network_name}}'
+    adapter_name: '{{ man_domain_setup_network_name }}'
     ipv4_addresses: 127.0.0.1
 
 - name: ensure domain exists and DC is promoted as a domain controller
   microsoft.ad.domain:
-    dns_domain_name: '{{man_domain_setup_domain_name}}'
-    safe_mode_password: '{{man_domain_setup_safe_mode_password}}'
+    dns_domain_name: '{{ man_domain_setup_domain_name }}'
+    safe_mode_password: '{{ man_domain_setup_safe_mode_password }}'
   register: pri_domain_setup_install_result
 
 - name: reboot DC if required after install
@@ -25,10 +25,10 @@
 
 - name: create domain username
   microsoft.ad.user:
-    name: '{{man_domain_setup_username}}'
-    upn: '{{man_domain_setup_username}}@{{man_domain_setup_domain_name}}'
-    description: '{{man_domain_setup_username}} Domain Account'
-    password: '{{man_domain_setup_password}}'
+    name: '{{ man_domain_setup_username }}'
+    upn: '{{ man_domain_setup_username }}@{{ man_domain_setup_domain_name }}'
+    description: '{{ man_domain_setup_username }} Domain Account'
+    password: '{{ man_domain_setup_password }}'
     password_never_expires: yes
     groups:
       set:
@@ -46,5 +46,5 @@
   become: true
   become_method: runas
   vars:
-    ansible_become_user: '{{man_domain_setup_username}}@{{man_domain_setup_domain_name}}'
-    ansible_become_pass: '{{man_domain_setup_password}}'
+    ansible_become_user: '{{ man_domain_setup_username }}@{{ man_domain_setup_domain_name }}'
+    ansible_become_pass: '{{ man_domain_setup_password }}'
