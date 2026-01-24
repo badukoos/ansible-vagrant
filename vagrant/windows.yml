@@ -1,6 +1,6 @@
 ---
 - name: create domain controller and setup active directory certificate service
-  hosts: windows
+  hosts: "windows:&controller"
   gather_facts: false
   vars:
     __marker_dir: "{{ playbook_dir }}/.vagrant/markers"
