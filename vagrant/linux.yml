@@ -12,12 +12,13 @@
     - name: wait for connection to come online
       ansible.builtin.wait_for_connection:
 
-    - name: ensure base packages are installed
+    # not pinning a version is perhaps fine here
+    - name: ensure base packages are installed # noqa: package-latest
       ansible.builtin.package:
         name:
           - vim
           - git
-          # fix for chmod: invalid mode: ‘A+user:ansible:rx:allow’
+          # fix for chmod: invalid mode: 'A+user:ansible:rx:allow'
           - acl
         state: latest
 
@@ -34,7 +35,7 @@
     - role: kerberos
     - role: python
       vars:
-        man_python_version: '{{ python3_version }}'
+        man_python_version: '{{ python3_version }}' # noqa var-naming[no-role-prefix]
 
 - name: setup pip and Ansible for the ansible user
   hosts: all

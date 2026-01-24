@@ -20,7 +20,7 @@
     - '"The Certification Authority is already installed" not in (pri_adcs_enrollment_config.stderr | regex_replace("\r\n", ""))'
   become: true
   become_user: SYSTEM
-  become_method: runas
+  become_method: ansible.builtin.runas
 
 # NOTE: the template data was manually exported from another AD CS server where
 # I manually crafted the template. Saves a lot of code to build the template

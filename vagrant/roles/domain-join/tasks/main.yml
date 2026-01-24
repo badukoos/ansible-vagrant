@@ -17,7 +17,7 @@
   ansible.windows.win_command: netsh interface ip set interface interface="{{ man_domain_join_network_name }}" metric=1
   when:
     - opt_domain_join_is_longhorn is defined
-    - opt_domain_join_is_longhorn == True
+    - opt_domain_join_is_longhorn | default(false)
 
 - name: join host to domain
   microsoft.ad.membership:
@@ -34,7 +34,7 @@
 - name: test out domain user logon
   ansible.windows.win_whoami:
   become: true
-  become_method: runas
+  become_method: ansible.builtin.runas
   vars:
     ansible_become_user: '{{ man_domain_join_username }}'
     ansible_become_password: '{{ man_domain_join_password }}'

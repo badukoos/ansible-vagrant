@@ -67,7 +67,7 @@
              (task_stat.state is defined and task_stat.state.status != "TASK_STATE_RUNNING")
       changed_when: false
 
-    - name: Clean up temporary scheduled task
+    - name: Clean up temporary scheduled task # noqa: ignore-errors
       community.windows.win_scheduled_task:
         name: "{{ virtio_task_name }}"
         state: absent

@@ -1,5 +1,6 @@
 ---
-- name: create virtualenv for Ansible
+# not pinning a version is perhaps fine here
+- name: create virtualenv for Ansible # noqa: package-latest
   ansible.builtin.pip:
     name:
       - ansible

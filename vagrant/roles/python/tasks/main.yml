@@ -38,9 +38,10 @@
 
 - name: install Python
   ansible.builtin.include_tasks: install.yml
-  when: pri_python_install.stat.exists == False
+  when: not (pri_python_install.stat.exists | default(false))
 
-- name: ensure pip, setuptools, and virtualenv are up to date
+# not pinning a version is perhaps fine here
+- name: ensure pip, setuptools, and virtualenv are up to date # noqa: package-latest
   ansible.builtin.pip:
     name:
       - pip

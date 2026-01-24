@@ -28,7 +28,9 @@
   register: pri_adcs_winrm_https_listener
   changed_when: false
 
-- block:
+- name: re-configure WinRM HTTPS listener with new certificate
+  when: pri_adcs_winrm_https_listener.stdout_lines[0] not in pri_adcs_winrm_enrolled_cert_thumbprint.stdout_lines
+  block:
     - name: change the certificate thumbprint
       ansible.windows.win_shell: |
         $selector_set = @{
@@ -54,4 +56,3 @@
         jid: '{{ pri_adcs_change_winrm_listener_async.ansible_job_id }}'
       register: pri_adcs_winrm_async_status
       until: pri_adcs_winrm_async_status.finished
-  when: pri_adcs_winrm_https_listener.stdout_lines[0] not in pri_adcs_winrm_enrolled_cert_thumbprint.stdout_lines

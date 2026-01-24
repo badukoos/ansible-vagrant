@@ -29,7 +29,7 @@
     upn: '{{ man_domain_setup_username }}@{{ man_domain_setup_domain_name }}'
     description: '{{ man_domain_setup_username }} Domain Account'
     password: '{{ man_domain_setup_password }}'
-    password_never_expires: yes
+    password_never_expires: true
     groups:
       set:
         - 'Domain Admins'
@@ -44,7 +44,7 @@
 - name: test out domain user that was created
   ansible.windows.win_whoami:
   become: true
-  become_method: runas
+  become_method: ansible.builtin.runas
   vars:
     ansible_become_user: '{{ man_domain_setup_username }}@{{ man_domain_setup_domain_name }}'
     ansible_become_pass: '{{ man_domain_setup_password }}'
