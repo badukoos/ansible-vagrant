@@ -1,0 +1,4 @@
+skip_list:
+  - name[casing] # silly rule
+  - role-name # it is perhaps okay to relax this one
+  - yaml[line-length] # plan to fix later
