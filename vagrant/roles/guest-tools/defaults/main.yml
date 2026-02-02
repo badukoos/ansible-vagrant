@@ -1,0 +1,3 @@
+windows_openssh_service_state: started
+windows_openssh_firewall_port: 22
+windows_openssh_default_shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
