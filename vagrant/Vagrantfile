@@ -62,7 +62,11 @@ def flatten_hosts(inv)
     return unless node.is_a?(Hash)
 
     cur_vars = acc_vars.dup
-    cur_vars.merge!(node['vars'] || {})
+    node_vars = node['vars'] || {}
+
+    cur_vars.merge!(node_vars)
+    cur_vars['provider_options'] =
+      merge_hash(acc_vars['provider_options'], node_vars['provider_options'])
 
     if node['hosts'].is_a?(Hash)
       node['hosts'].each do |hn, hv|
