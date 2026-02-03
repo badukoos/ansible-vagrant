@@ -11,26 +11,33 @@
     - name: make absolutely sure the connection is active
       ansible.builtin.wait_for_connection:
 
-    - name: get network connection name for private adapter
-      ansible.windows.win_shell: |
-        foreach ($instance in (Get-CimInstance -ClassName Win32_NetworkAdapter -Filter "NetEnabled='True'")) {
-          $instance_config = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "Index = '$($instance.Index)'"
-          if ($instance_config.IPAddress -contains "{{ ansible_host }}") {
-            $instance.NetConnectionID
+    - name: Get network connection name for private adapter
+      ansible.windows.win_powershell:
+        script: |
+          foreach ($instance in Get-CimInstance `
+              -ClassName Win32_NetworkAdapter `
+              -Filter "NetEnabled='True'"
+          ) {
+            $instanceConfig = Get-CimInstance `
+              -ClassName Win32_NetworkAdapterConfiguration `
+              -Filter "Index = '$($instance.Index)'"
+
+            if ($instanceConfig.IPAddress -contains "{{ ansible_host }}") {
+              $instance.NetConnectionID
+            }
           }
-        }
       changed_when: false
       register: dc_network_connection_name
 
     - name: fail if we didn't get a network connection name
       ansible.builtin.fail:
         msg: Failed to get the network connection name on controller
-      when: dc_network_connection_name.stdout_lines | length != 1
+      when: dc_network_connection_name.output | length != 1
 
   roles:
     - role: domain-setup
       vars:
-        man_domain_setup_network_name: "{{ dc_network_connection_name.stdout_lines[0] }}"
+        man_domain_setup_network_name: "{{ dc_network_connection_name.output[0] }}"
     - role: adcs-enrollment
     - role: adcs-winrm
       vars:
@@ -85,26 +92,33 @@
     - name: make absolutely sure the connection is active
       ansible.builtin.wait_for_connection:
 
-    - name: get network connection name for private adapter
-      ansible.windows.win_shell: |
-        foreach ($instance in (Get-CimInstance -ClassName Win32_NetworkAdapter -Filter "NetEnabled='True'")) {
-          $instance_config = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "Index = '$($instance.Index)'"
-          if ($instance_config.IPAddress -contains "{{ ansible_host }}") {
-            $instance.NetConnectionID
+    - name: Get network connection name for private adapter
+      ansible.windows.win_powershell:
+        script: |
+          foreach ($instance in Get-CimInstance `
+              -ClassName Win32_NetworkAdapter `
+              -Filter "NetEnabled='True'"
+          ) {
+            $instanceConfig = Get-CimInstance `
+              -ClassName Win32_NetworkAdapterConfiguration `
+              -Filter "Index = '$($instance.Index)'"
+
+            if ($instanceConfig.IPAddress -contains "{{ ansible_host }}") {
+              $instance.NetConnectionID
+            }
           }
-        }
       changed_when: false
       register: network_connection_name
 
     - name: fail if we didn't get a client network connection name
       ansible.builtin.fail:
         msg: Failed to get the network connection name on client
-      when: network_connection_name.stdout_lines | length != 1
+      when: network_connection_name.output | length != 1
 
   roles:
     - role: domain-join
       vars:
-        man_domain_join_network_name: "{{ network_connection_name.stdout_lines[0] }}"
+        man_domain_join_network_name: "{{ network_connection_name.output[0] }}"
         man_domain_join_dc_ip: "{{ __dc_ip }}"
     - role: adcs-winrm
       vars:
