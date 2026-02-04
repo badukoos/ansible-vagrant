@@ -4,5 +4,4 @@
 *.DS_Store
 vagrant/ca_chain.pem
 scratchpad
-ansible.cfg
 .archive/
