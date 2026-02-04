@@ -44,10 +44,6 @@ all:
               os: windows
               ansible_host: 192.168.56.21
               vagrant_box: jborean93/WindowsServer2019
-              provider_options:
-                cpu_mode: host-passthrough
-                nic_model: virtio
-                memory_backing: memfd
 
             win2022:
               os: windows
@@ -56,6 +52,15 @@ all:
 
     linux:
       vars:
+        provider_options:
+          memory_backing: memfd
+          sync_folders:
+            - enabled: true
+              type: virtiofs
+              host_path: .
+              guest_path: /vagrant
+              readonly: true
+
         ansible_port: 22
         man_user_setup_user: ansible
         man_user_setup_enc_pass: '$6$OpPwep0n4zujElhs$gWIk6yiEIYVg9h8rcs.Nq8fgas0TSgC/3Wc.Y2SHhvtFfO74Kc63RNaZBY119UAc7kfg1MEbkCIzTod2ksedp1'
@@ -79,18 +84,8 @@ all:
           ansible_host: 192.168.56.32
           vagrant_box: centos/stream10
           ansible_package_name: dnf
-          provider_options:
-            cpu_mode: host-passthrough
-            nic_model: virtio
-            memory_backing: shared
-            sync_folders:
-              - enabled: true
-                type: virtiofs
-                host_path: .
-                guest_path: /vagrant
-                readonly: true
 
-        ubuntu-noble:
+        ubuntu24:
           os: linux
           ansible_host: 192.168.56.33
           vagrant_box: cloud-image/ubuntu-24.04
