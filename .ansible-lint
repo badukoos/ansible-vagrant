@@ -1,4 +1,3 @@
 skip_list:
-  - name[casing] # silly rule
-  - role-name # it is perhaps okay to relax this one
-  - yaml[line-length] # plan to fix later
+  - name[casing] # All names should start with an uppercase letter. - silly rule
+  - role-name # Role name user-setup does not match ``^[a-z][a-z0-9_]*$`` pattern. - it is perhaps okay to relax this one
